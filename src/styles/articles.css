@@ -1,0 +1,414 @@
+/* =============================================================
+   articles.css — 文章列表页
+   1) 内容分级：头条 / 推荐 / 常规，靠尺寸·留白·封面·徽标·摘要长度分级
+   2) 滚动动效：5 个区块 5 套出场，CSS 原生 scroll-driven（animation-timeline: view()）
+      —— 0KB JS、跑在合成器线程、天然双向（往回滚自动反向）、重复进出自然
+   3) 不支持 view() 的浏览器：@supports 包裹，元素默认可见，不会出现空白
+   ============================================================= */
+
+:root {
+  --ink:        #E8F0FF;
+  --ink-dim:    rgba(200, 215, 240, .66);
+  --ink-faint:  rgba(200, 215, 240, .42);
+  --accent:     #FFB347;
+  --accent-2:   #19E9DF;
+  --glass:      rgba(10, 16, 28, .58);
+  --line:       rgba(255, 255, 255, .12);
+  --e-out:      cubic-bezier(.22, .61, .36, 1);
+  --mv: 1;                       /* 位移系数，移动端收窄 */
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; background: #070b14; }
+/* overflow-x 只能写在 html 上。
+   写在 body 上会让 body 的 overflow-y 计算成 auto → body 变成滚动容器，
+   于是 animation-timeline: view() 把 body（高＝整页内容高）当成视口，
+   cover 范围被撑成整页高，所有滚动动效都走不完（实测页脚只到 0.42）。 */
+html { overflow-x: hidden; }
+body {
+  color: var(--ink);
+  font-family: var(--f-sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 轻量星空背景（不加载 1.1MB 地球 bundle） ---------- */
+.starfield {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(1.4px 1.4px at 12% 22%, rgba(255,255,255,.55), transparent),
+    radial-gradient(1.2px 1.2px at 78% 14%, rgba(255,255,255,.42), transparent),
+    radial-gradient(1.6px 1.6px at 34% 68%, rgba(255,255,255,.38), transparent),
+    radial-gradient(1.1px 1.1px at 62% 82%, rgba(255,255,255,.46), transparent),
+    radial-gradient(1.3px 1.3px at 88% 56%, rgba(255,255,255,.34), transparent),
+    radial-gradient(900px 620px at 50% 0%, rgba(25,233,223,.07), transparent 70%),
+    radial-gradient(760px 520px at 85% 100%, rgba(255,179,71,.06), transparent 70%);
+}
+
+.back-home {
+  position: fixed; top: 26px; left: 28px; z-index: 20;
+  font-size: 12px; letter-spacing: .1em; color: var(--ink-dim);
+  text-decoration: none; padding: 9px 16px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(8, 14, 26, .6); backdrop-filter: blur(10px);
+  transition: color .3s var(--e-out), border-color .3s var(--e-out);
+}
+.back-home:hover { color: var(--accent); border-color: rgba(255,179,71,.4); }
+
+.articles { position: relative; z-index: 1; }
+.block { padding: 96px 0; }
+.wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 40px; }
+
+/* ---------- 区块标题 ---------- */
+.block-head {
+  display: flex; align-items: baseline; gap: 16px;
+  margin: 0 0 28px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.block-title {
+  font-size: 22px; font-weight: 700; margin: 0; letter-spacing: .02em;
+}
+.block-hint { font-size: 12px; color: var(--ink-faint); letter-spacing: .06em; }
+
+.eyebrow {
+  font-size: 11px; letter-spacing: .3em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 20px; font-weight: 600;
+}
+
+/* =============================================================
+   ① HERO
+   ============================================================= */
+.block--hero { min-height: 88vh; display: flex; align-items: center; padding-top: 120px; }
+.hero-title {
+  font-size: clamp(46px, 8.4vw, 96px); font-weight: 700;
+  letter-spacing: .02em; line-height: 1.06; margin: 0 0 26px; color: #fff;
+}
+.hero-sub { font-size: clamp(15px, 1.7vw, 19px); color: var(--ink-dim); margin: 0 0 22px; line-height: 1.8; }
+.hero-meta { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--ink-faint); }
+.hero-meta i { width: 1px; height: 11px; background: var(--line); }
+
+/* =============================================================
+   ② 头条 —— 最强视觉权重
+   ============================================================= */
+.headline-card {
+  display: grid; grid-template-columns: 40% 1fr; gap: 0;
+  text-decoration: none; color: inherit;
+  background: var(--glass); border: 1px solid var(--line);
+  /* overflow 必须是 clip，不能是 hidden：
+     hidden 会让本卡片成为滚动容器，内部 [data-parallax] 封面的 view() 时间轴
+     就会以本卡片为视口，而它永不滚动 → 视差永久卡在 50%（实测 covTime 恒为 49.9959%）。
+     clip 不创建滚动容器，后代 view() 才会正确解析到文档滚动。
+     先写 hidden 作老浏览器（Safari <16）兜底。 */
+  overflow: hidden;
+  overflow: clip;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  transform-style: preserve-3d;
+  transition: border-color .4s var(--e-out), box-shadow .4s var(--e-out);
+}
+.headline-card:hover { border-color: rgba(255,179,71,.4); box-shadow: 0 24px 70px rgba(0,0,0,.5); }
+
+/* 封面：占卡片 40%，内放大数字 —— 权重最强的视觉锚点 */
+.headline-card__cover {
+  position: relative; min-height: 340px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 28px;
+  background:
+    radial-gradient(120% 90% at 20% 10%, rgba(255,179,71,.30), transparent 62%),
+    radial-gradient(100% 80% at 90% 90%, rgba(255,79,129,.22), transparent 60%),
+    linear-gradient(160deg, #16233d, #0a1120 70%);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+.headline-card__cover::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(60% 50% at 50% 40%, rgba(255,255,255,.08), transparent);
+}
+.headline-card__badge {
+  position: absolute; top: 22px; left: 24px;
+  padding: 6px 13px; border-radius: 999px;
+  background: var(--accent); color: #1a1206;
+  font-size: 11px; font-weight: 700; letter-spacing: .14em;
+}
+.headline-card__rank {
+  position: absolute; top: 24px; right: 26px;
+  font-size: 13px; letter-spacing: .22em; color: rgba(255,255,255,.5);
+  font-family: var(--f-mono);
+}
+.headline-card__bignum {
+  display: block; font-size: clamp(38px, 5.4vw, 62px); font-weight: 700;
+  line-height: 1; color: #fff; letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.headline-card__coverlabel {
+  display: block; margin-top: 8px; font-size: 11px;
+  letter-spacing: .26em; color: rgba(255,255,255,.55);
+}
+
+.headline-card__body { padding: 38px 40px; }
+.headline-card__title {
+  font-size: clamp(24px, 2.7vw, 32px); font-weight: 700;
+  line-height: 1.4; margin: 0 0 18px; color: #fff;
+}
+.headline-card__excerpt {
+  font-size: 15px; line-height: 2; color: var(--ink-dim);
+  margin: 0 0 26px; max-width: 46em;
+}
+.headline-card__stats {
+  display: flex; flex-wrap: wrap; gap: 10px 28px; margin-bottom: 20px;
+  font-size: 12px; color: var(--ink-faint);
+}
+.headline-card__stats b {
+  display: block; font-size: 21px; font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums; margin-bottom: 3px;
+}
+.headline-card__meta {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px; color: var(--ink-faint);
+}
+.headline-card__meta i { width: 1px; height: 10px; background: var(--line); }
+
+/* =============================================================
+   ③ 推荐 —— 中权重
+   ============================================================= */
+.featured-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+
+.featured-card {
+  position: relative; display: block; text-decoration: none; color: inherit;
+  background: var(--glass); border: 1px solid var(--line);
+  border-radius: 18px; overflow: hidden; padding-bottom: 22px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  transition: border-color .35s var(--e-out), translate .35s var(--e-out);
+}
+.featured-card:hover { border-color: rgba(255,255,255,.26); translate: 0 -4px; }
+
+.featured-card__tag {
+  position: absolute; top: 16px; left: 18px; z-index: 2;
+  padding: 5px 11px; border-radius: 999px;
+  border: 1px solid rgba(255,179,71,.55); color: var(--accent);
+  font-size: 10px; font-weight: 600; letter-spacing: .16em;
+  background: rgba(10,16,28,.7);
+}
+/* 封面降级为条状，占比明显小于头条 */
+.featured-card__cover {
+  height: 128px; margin-bottom: 20px;
+  display: flex; align-items: flex-end; justify-content: flex-end; padding: 14px 18px;
+}
+.featured-card__cover span {
+  font-family: var(--f-mono); font-size: 26px; font-weight: 700;
+  color: rgba(255,255,255,.34); letter-spacing: .1em;
+}
+.featured-card__cover--ice {
+  background:
+    radial-gradient(90% 80% at 25% 20%, rgba(126,231,255,.28), transparent 65%),
+    radial-gradient(80% 70% at 85% 85%, rgba(76,141,255,.24), transparent 60%),
+    linear-gradient(150deg, #12233c, #0a1120);
+}
+.featured-card__cover--aurora {
+  background:
+    radial-gradient(90% 80% at 25% 20%, rgba(98,255,209,.26), transparent 65%),
+    radial-gradient(80% 70% at 85% 85%, rgba(140,123,255,.26), transparent 60%),
+    linear-gradient(150deg, #14263a, #0a1120);
+}
+.featured-card__title {
+  font-size: 18px; font-weight: 600; line-height: 1.5;
+  margin: 0 20px 12px; color: var(--ink);
+}
+/* 摘要比头条短，行数也少 */
+.featured-card__excerpt {
+  font-size: 13px; line-height: 1.9; color: var(--ink-dim);
+  margin: 0 20px 18px;
+}
+.featured-card__stats {
+  display: flex; gap: 18px; margin: 0 20px 14px;
+  font-size: 11px; color: var(--ink-faint);
+}
+.featured-card__stats b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.featured-card__meta {
+  display: flex; align-items: center; gap: 10px; margin: 0 20px;
+  font-size: 11px; color: var(--ink-faint);
+}
+.featured-card__meta i { width: 1px; height: 9px; background: var(--line); }
+
+/* =============================================================
+   ④ 其余 —— 最弱权重，列表行
+   ============================================================= */
+.archive-list { list-style: none; margin: 0; padding: 0; }
+
+.archive-row { border-bottom: 1px solid rgba(255,255,255,.07); }
+.archive-row a {
+  display: grid;
+  grid-template-columns: 46px 1fr 70px 92px 64px;
+  align-items: center; gap: 16px;
+  padding: 16px 12px; text-decoration: none; color: inherit;
+  border-radius: 10px;
+  transition: background .3s var(--e-out), padding-left .3s var(--e-out);
+}
+.archive-row a:hover { background: rgba(255,255,255,.045); padding-left: 20px; }
+.archive-row__no {
+  font-family: var(--f-mono); font-size: 12px; color: var(--ink-faint); letter-spacing: .1em;
+}
+.archive-row__title {
+  font-size: 15px; color: var(--ink-dim); line-height: 1.6;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.archive-row a:hover .archive-row__title { color: var(--ink); }
+.archive-row__date, .archive-row__rate {
+  font-size: 12px; color: var(--ink-faint); font-variant-numeric: tabular-nums; text-align: right;
+}
+.archive-row__play {
+  font-size: 13px; color: var(--ink-dim); font-variant-numeric: tabular-nums; text-align: right;
+}
+
+/* =============================================================
+   ⑤ 页脚
+   ============================================================= */
+.block--end { padding-bottom: 140px; }
+.end-card {
+  text-align: center; padding: 56px 40px;
+  background: var(--glass); border: 1px solid var(--line); border-radius: 22px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.end-card h2 { font-size: 26px; font-weight: 700; margin: 0 0 14px; }
+.end-card p { font-size: 14px; color: var(--ink-dim); margin: 0 0 30px; }
+.end-links { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.end-links a {
+  padding: 12px 24px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--ink); text-decoration: none; font-size: 14px;
+  background: rgba(255,255,255,.04);
+  transition: background .3s var(--e-out), border-color .3s var(--e-out);
+}
+.end-links a:hover { background: rgba(255,179,71,.14); border-color: rgba(255,179,71,.4); }
+
+/* =============================================================
+   滚动动效 —— 5 套，每区块各不相同
+   全部包在 @supports 里：不支持 view() 时元素保持默认可见，不会留白
+   ============================================================= */
+@supports (animation-timeline: view()) {
+
+  /* ① 遮罩上推（Hero 文字 + 区块标题） */
+  [data-anim="mask"] {
+    animation: a-mask linear both;
+    animation-timeline: view();
+    animation-range: entry calc(4% + var(--i, 0) * 4%) cover calc(26% + var(--i, 0) * 4%);
+  }
+  @keyframes a-mask {
+    from { opacity: 0; clip-path: inset(0 0 100% 0); translate: 0 calc(18px * var(--mv)); }
+    to   { opacity: 1; clip-path: inset(0 0 0 0);     translate: 0 0; }
+  }
+
+  /* ② 3D 翻转入场（头条大卡） */
+  [data-anim="flip3d"] {
+    animation: a-flip linear both;
+    animation-timeline: view();
+    animation-range: entry 6% cover 42%;
+    perspective: 1400px; transform-style: preserve-3d;
+  }
+  @keyframes a-flip {
+    from {
+      opacity: 0;
+      transform: rotateY(calc(-14deg * var(--mv))) translateZ(-90px) scale(.94);
+    }
+    to   { opacity: 1; transform: rotateY(0deg) translateZ(0) scale(1); }
+  }
+
+  /* ②-补 封面视差：随滚动持续位移（scrub） */
+  [data-parallax] {
+    animation: a-parallax linear both;
+    animation-timeline: view();
+    animation-range: cover 0% cover 100%;
+  }
+  @keyframes a-parallax {
+    from { translate: 0 -5%; }
+    to   { translate: 0  5%; }
+  }
+
+  /* ③ 斜切遮罩揭示（推荐卡，交错） */
+  [data-anim="skew"] {
+    animation: a-skew linear both;
+    animation-timeline: view();
+    animation-range: entry calc(6% + var(--i, 0) * 9%) cover calc(34% + var(--i, 0) * 9%);
+  }
+  @keyframes a-skew {
+    from {
+      opacity: 0;
+      clip-path: polygon(0 0, 0 0, -14% 100%, -14% 100%);
+      translate: calc(26px * var(--mv)) 0;
+    }
+    to   { opacity: 1; clip-path: polygon(0 0, 114% 0, 100% 100%, 0 100%); translate: 0 0; }
+  }
+
+  /* ④ 逐行上浮 + 左侧序号线生长（列表行） */
+  [data-anim="row"] {
+    animation: a-row linear both;
+    animation-timeline: view();
+    animation-range: entry calc(2% + var(--i, 0) * 2.2%) cover calc(24% + var(--i, 0) * 2.2%);
+  }
+  @keyframes a-row {
+    from { opacity: 0; translate: 0 calc(14px * var(--mv)); }
+    to   { opacity: 1; translate: 0 0; }
+  }
+
+  /* ⑤ 缩放合焦（页脚）
+     最后一屏没有后续滚动距离，终点用 entry 100%（元素完整进入视口即可收尾），
+     不用 cover 百分比 —— cover 是以「元素高＋视口高」为量程，页脚离视口底还有
+     一段距离时百分比终点可能永远够不着（实测 cover 26% 只到 0.42）。 */
+  [data-anim="focus"] {
+    animation: a-focus linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 100%;
+  }
+  @keyframes a-focus {
+    from { opacity: 0; scale: .955; filter: blur(8px); }
+    to   { opacity: 1; scale: 1;    filter: blur(0); }
+  }
+}
+
+/* Hero 逐字：首屏元素，用时间线动画（与滚动无关），加载即播 */
+.split-char {
+  display: inline-block;
+  animation: a-char .88s var(--e-out) both;
+  animation-delay: var(--cd, 0ms);
+}
+@keyframes a-char {
+  from { opacity: 0; translate: 0 calc(24px * var(--mv)); filter: blur(10px); }
+  to   { opacity: 1; translate: 0 0; filter: blur(0); }
+}
+
+/* =============================================================
+   降级
+   ============================================================= */
+@media (max-width: 900px) {
+  .headline-card { grid-template-columns: 1fr; }
+  .headline-card__cover { min-height: 220px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .headline-card__body { padding: 28px 26px; }
+  .featured-grid { grid-template-columns: 1fr; }
+  .archive-row a { grid-template-columns: 40px 1fr 84px; }
+  .archive-row__date, .archive-row__rate { display: none; }
+}
+@media (max-width: 760px) {
+  :root { --mv: .5; }
+  .block { padding: 64px 0; }
+  .wrap { padding: 0 22px; }
+  .back-home { top: 16px; left: 16px; }
+  /* 移动端关掉视差与模糊：低端机上这两个最贵 */
+  [data-parallax] { animation: none !important; }
+  @supports (animation-timeline: view()) {
+    [data-anim="focus"] { animation-name: a-focus-noblur; }
+    @keyframes a-focus-noblur {
+      from { opacity: 0; scale: .975; }
+      to   { opacity: 1; scale: 1; }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+  [data-anim], .split-char {
+    opacity: 1 !important; translate: 0 0 !important; scale: 1 !important;
+    filter: none !important; clip-path: none !important; transform: none !important;
+  }
+}

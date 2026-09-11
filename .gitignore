@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+
+# Dependencies (future-proof)
+node_modules/
+dist/
+.vite/
+
+# Local env / secrets
+.env
+.env.*
+
+# 字体子集化中间产物
+tmp/

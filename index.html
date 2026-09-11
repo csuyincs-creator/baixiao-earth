@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>清晨方白晓 · 星空地球</title>
+  <meta name="description" content="清晨方白晓的个人主页。一颗会随你滚动而变化的地球，收录我的项目、实验记录与开源作品。">
+  <link rel="stylesheet" href="/src/styles/fonts.css">
+  <link rel="stylesheet" href="/appv2.css">
+  <link rel="stylesheet" href="/src/styles/earth-ui.css">
+  <link rel="stylesheet" href="/src/styles/home.css">
+  <link rel="stylesheet" href="/src/styles/motion.css">
+  <link rel="stylesheet" href="/src/styles/energy.css">
+  <link rel="stylesheet" href="/src/styles/immersive.css">
+
+  <!-- 沉浸播放会真刷一次页面（F5 级别的重开）：刷新前打标记，刷新后首帧就套上沉浸态，
+       这样常驻 UI（含「沉浸播放」按钮）从头到尾不会闪一下，也不需要等 JS 初始化。 -->
+  <script>
+    (function () {
+      try {
+        if (sessionStorage.getItem('immersive:autostart') === '1') {
+          sessionStorage.removeItem('immersive:autostart');
+          document.documentElement.classList.add('is-immersive', 'is-immersive-boot');
+        }
+      } catch (e) { /* 隐私模式等场景下 sessionStorage 不可用，退化为普通进入 */ }
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- 重开黑幕：点击「沉浸播放」→ 黑幕落下 → 真刷新 → 黑幕揭开 + 自动开播 -->
+  <div class="boot-veil" aria-hidden="true"></div>
+
+  <!-- ============================================================
+       EARTH LAYER — 原站结构，一个属性都不能改。
+       bundle 通过 [data-component] 定位组件，通过内部 timeline 推进状态。
+       ============================================================ -->
+  <main class="earth-state-shell">
+    <div class="main-w lang-zh-CN">
+      <div id="canvas-wrapper"></div>
+
+      <div data-webgl="GlobeIntro" data-component="GlobeIntroNoLine" data-custom-cursor>
+        <section class="hero-section fullscreen grid container" data-snap data-earth-state-anchor aria-hidden="true">
+          <div class="hero-w">
+            <div class="subtitle-w"><p class="hero-sub"></p></div>
+            <h1 class="hero-t"></h1>
+          </div>
+        </section>
+        <section class="protecting-section fullscreen grid container" data-snap data-earth-state-anchor aria-hidden="true">
+          <div class="protecting-w">
+            <h2 class="protecting-t"></h2>
+            <div class="right-w">
+              <svg class="protecting-icon" viewBox="0 0 24 30" aria-hidden="true"></svg>
+              <h3 class="protecting-p p1"></h3>
+              <p class="protecting-p p2"></p>
+            </div>
+          </div>
+        </section>
+        <section class="objects-section fullscreen grid container" data-snap data-earth-state-anchor aria-hidden="true">
+          <div class="video-w"><video class="objects-video" loop muted playsinline preload="none" aria-hidden="true"></video></div>
+          <div class="stats-w">
+            <div class="number-w"><p class="number"></p><svg class="number-icon" viewBox="0 0 107 107" aria-hidden="true"></svg></div>
+            <p class="stats-t"></p>
+          </div>
+        </section>
+        <section class="satellites-section fullscreen grid container" data-snap data-earth-state-anchor aria-hidden="true">
+          <div class="stats-w">
+            <div class="number-w"><p class="number"></p><svg class="number-icon" viewBox="0 0 107 107" aria-hidden="true"></svg></div>
+            <p class="stats-t"></p>
+          </div>
+        </section>
+      </div>
+
+      <div data-webgl="Wayfinder" data-component="Wayfinder" aria-hidden="true">
+        <section class="wayfinder-section grid container" data-snap data-earth-state-anchor>
+          <div class="top-w">
+            <svg class="wayfinder-svg" viewBox="0 0 34 34" aria-hidden="true"></svg>
+            <h3 class="wayfinder-t"></h3>
+            <p class="wayfinder-p"></p>
+            <a class="button" href="#"><p class="button-text"></p></a>
+          </div>
+        </section>
+        <section class="wayfinder-section grid container" data-snap data-earth-state-anchor>
+          <div class="bottom-w">
+            <svg class="bottom-icon" viewBox="0 0 42 36" aria-hidden="true"></svg>
+            <p class="bottom-p"></p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div class="cursor-w loading" aria-hidden="true">
+    <svg class="cursor outer-circle" viewBox="0 0 34 34">
+      <ellipse cx="17" cy="17" rx="16" ry="16.17"></ellipse>
+      <circle cx="5" cy="7.12" r=".8"></circle>
+      <g class="ext-circles"><circle cx="-5" cy="17" r=".8"></circle><circle cx="17" cy="-5" r=".8"></circle></g>
+    </svg>
+    <svg class="cursor inner-circle" viewBox="0 0 34 34"><circle class="static-circle" cx="17" cy="17" r=".8"></circle></svg>
+  </div>
+  <svg class="longpress-logo" viewBox="0 0 1 1" aria-hidden="true"></svg>
+
+  <div class="earth-drag-layer" aria-label="拖动旋转地球"></div>
+
+  <!-- ============================================================
+       CONTENT LAYER — 新增。6 章 = 地球 6 状态。
+       默认 pointer-events:none，让空白处能拖动地球；
+       可交互元素单独开 auto（见 home.css）。
+       ============================================================ -->
+  <div class="home-content" id="home-content">
+
+    <!-- ① 裸地球 -->
+    <section class="chapter chapter--hero" data-chapter="0" data-energy="3" data-transition="intro">
+      <div class="wrap hero-wrap">
+        <p class="eyebrow" data-anim="text" style="--i:0">VIBE CODING · PERSONAL SPACE</p>
+        <h1 class="hero-title" data-split>清晨方白晓</h1>
+        <p class="hero-sub" data-anim="text" style="--i:1">
+          把脑海里的想法，<em class="serif">一步步</em>落地实现。
+        </p>
+        <div class="hero-meta" data-anim="text" style="--i:2">
+          <span>抖音 @清晨方白晓</span><i></i><span>3,578 位同行者</span>
+        </div>
+        <div class="scroll-cue" data-anim="text" style="--i:3">
+          <span>向下滚动 · 地球会跟着你变</span>
+          <div class="scroll-cue__line"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ② 云层 -->
+    <section class="chapter chapter--stats" data-chapter="1" data-energy="2" data-transition="dissolve">
+      <div class="wrap">
+        <p class="eyebrow" data-anim="text" style="--i:0">THE NUMBERS</p>
+        <h2 class="chapter-title" data-anim="text" style="--i:1">42 天，<em class="serif">攒下</em>这些</h2>
+
+        <div class="metrics">
+          <div class="metric metric--hero" data-anim="text" style="--i:2">
+            <span class="metric__num" data-count="496441" data-count-dur="1100">0</span>
+            <span class="metric__label">总播放 · Total views</span>
+            <span class="metric__note">过去 42 天，所有作品的累计播放</span>
+          </div>
+
+          <div class="scale" data-anim="draw" style="--i:3" aria-hidden="true">
+            <span class="scale__end">DAY 01</span>
+            <span class="scale__line"><i></i></span>
+            <span class="scale__end scale__end--hi">DAY 42 · 496K</span>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric metric--sec" data-anim="text" style="--i:4">
+              <span class="metric__num" data-count="12509" data-count-dur="850">0</span>
+              <span class="metric__label">获赞 · Likes</span>
+            </div>
+            <div class="metric metric--sec" data-anim="text" style="--i:5">
+              <span class="metric__num" data-count="3578" data-count-dur="700">0</span>
+              <span class="metric__label">粉丝 · Followers</span>
+            </div>
+          </div>
+
+          <div class="metric metric--sec metric--last" data-anim="text" style="--i:6">
+            <span class="metric__num" data-count="20" data-count-dur="500">0</span>
+            <span class="metric__label">件作品 · Works published</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ 城市光点 -->
+    <section class="chapter chapter--works" data-chapter="2" data-energy="2" data-transition="rail">
+      <div class="wrap">
+        <p class="eyebrow" data-anim="text" style="--i:0">SELECTED WORKS</p>
+        <h2 class="chapter-title" data-anim="text" style="--i:1">作品精选</h2>
+
+        <div class="works" data-works>
+
+          <!-- 左：Hero Artifact —— 封面满铺 + 底部压暗，标题叠在压暗区 -->
+          <a class="hero-artifact" data-works-hero data-preset="neon" data-anim="rail" style="--i:0"
+             href="https://www.douyin.com/video/7668649612115529849" target="_blank" rel="noopener">
+            <div class="hero-artifact__media">
+              <img class="hero-artifact__img is-on" data-works-img src="/assets/covers/01.jpg" alt="" decoding="async">
+              <img class="hero-artifact__img" data-works-img2 src="/assets/covers/01.jpg" alt="" decoding="async">
+            </div>
+            <div class="hero-artifact__meta">
+              <span class="hero-artifact__rank" data-works-rank>01 / featured</span>
+              <h3 class="hero-artifact__title" data-works-title>Obsidian 仪表盘大升级！3D 粒子卡片</h3>
+              <p class="hero-artifact__sub" data-works-sub>Obsidian 仪表盘 · 2026</p>
+              <div class="hero-artifact__stats" data-works-stats>
+                <span><b>322,524</b> 播放</span><span><b>9,606</b> 赞</span><span><b>7,937</b> 收藏</span>
+              </div>
+            </div>
+            <span class="hero-artifact__arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <!-- 右：Project Index —— 无容器，靠编号 + 分隔线组织 -->
+          <ul class="index-list" data-works-index>
+            <li>
+              <a class="index-row" data-works-row data-kind="video" data-preset="ice" data-img="/assets/covers/02.jpg"
+                 href="https://www.douyin.com/video/7669118005049912177" target="_blank" rel="noopener">
+                <span class="index-row__no">02</span>
+                <span class="index-row__title">流体卡片 粒子容器 3D 旋转</span>
+                <span class="index-row__desc">3D 粒子容器</span>
+                <span class="index-row__arrow" aria-hidden="true">↗</span>
+                <span class="index-row__stats" hidden><span><b>23,834</b> 播放</span><span><b>483</b> 赞</span><span><b>359</b> 收藏</span></span>
+              </a>
+            </li>
+            <li>
+              <a class="index-row" data-works-row data-kind="图文" data-preset="aurora" data-img="/assets/covers/03.jpg"
+                 href="https://www.douyin.com/video/7668480673955525809" target="_blank" rel="noopener">
+                <span class="index-row__no">03</span>
+                <span class="index-row__title">给 Obsidian 仓库搭了一套阅读仓</span>
+                <span class="index-row__desc">Obsidian 阅读仓 · 图文 3 张</span>
+                <span class="index-row__arrow" aria-hidden="true">↗</span>
+                <span class="index-row__stats" hidden><span><b>20,722</b> 播放</span><span><b>450</b> 赞</span><span><b>387</b> 收藏</span></span>
+              </a>
+            </li>
+            <li>
+              <a class="index-row" data-works-row data-kind="video" data-preset="sunset" data-img="/assets/covers/04.jpg"
+                 href="https://www.douyin.com/video/7670570773073423290" target="_blank" rel="noopener">
+                <span class="index-row__no">04</span>
+                <span class="index-row__title">环星 · 呼吸 · 粒子动效工作台</span>
+                <span class="index-row__desc">粒子动效工作台</span>
+                <span class="index-row__arrow" aria-hidden="true">↗</span>
+                <span class="index-row__stats" hidden><span><b>20,263</b> 播放</span><span><b>293</b> 赞</span><span><b>198</b> 收藏</span></span>
+              </a>
+            </li>
+            <li>
+              <a class="index-row" data-works-row data-kind="video" data-preset="neon" data-img="/assets/covers/05.jpg"
+                 href="https://www.douyin.com/video/7679327523175468298" target="_blank" rel="noopener">
+                <span class="index-row__no">05</span>
+                <span class="index-row__title">做 Vibe Coding 页面没质感？4 个高级特效</span>
+                <span class="index-row__desc">Shader 效果合集</span>
+                <span class="index-row__arrow" aria-hidden="true">↗</span>
+                <span class="index-row__stats" hidden><span><b>12,118</b> 播放</span><span><b>226</b> 赞</span><span><b>225</b> 收藏</span></span>
+              </a>
+            </li>
+            <li>
+              <a class="index-row" data-works-row data-kind="video" data-preset="sunset" data-img="/assets/covers/06.jpg"
+                 href="https://www.douyin.com/video/7674776204775310331" target="_blank" rel="noopener">
+                <span class="index-row__no">06</span>
+                <span class="index-row__title">Vibecoding 星空地球</span>
+                <span class="index-row__desc">就是这颗 · 个人项目首页</span>
+                <span class="index-row__arrow" aria-hidden="true">↗</span>
+                <span class="index-row__stats" hidden><span><b>5,188</b> 播放</span><span><b>76</b> 赞</span><span><b>41</b> 收藏</span></span>
+              </a>
+            </li>
+          </ul>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ④ 轨道环绕 -->
+    <section class="chapter chapter--about" data-chapter="3" data-energy="1" data-transition="lift">
+      <div class="wrap">
+        <p class="eyebrow" data-anim="text" style="--i:0">WHAT I DO</p>
+        <h2 class="chapter-title" data-anim="text" style="--i:1">三条并行轨道</h2>
+        <div class="editorial-list">
+          <div class="track-item" data-anim="line" style="--i:0">
+            <span class="track-item__no">01 · BUILD</span>
+            <h3>Obsidian 知识管理</h3>
+            <p>阅读仓、仪表盘、状态回写 Frontmatter。让知识库不只是存文件的容器，而是能持续推着你行动。</p>
+          </div>
+          <div class="track-item" data-anim="line" style="--i:1">
+            <span class="track-item__no">02 · EXPLORE</span>
+            <h3>3D / 粒子网页特效</h3>
+            <p>星空地球、流体卡片、云起云舒、水墨太极进度条。纯前端实现，不依赖重型框架。</p>
+          </div>
+          <div class="track-item" data-anim="line" style="--i:2">
+            <span class="track-item__no">03 · CONNECT</span>
+            <h3>AI 工作流</h3>
+            <p>Codex 双机协作、本地知识库与 AI 无缝联动。把重复的部分交给机器，人只管判断。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑤ 大气辉光 -->
+    <section class="chapter chapter--gift" data-chapter="4" data-energy="0" data-transition="bloom">
+      <div class="wrap">
+        <div class="reading-column">
+          <p class="eyebrow" data-anim="text" style="--i:0">OPEN SOURCE</p>
+          <h2 class="chapter-title" data-anim="text" style="--i:1">这颗地球，送给你</h2>
+
+          <div class="letter editorial" data-anim="wipe">
+            <p>这颗地球，是我在 8 月 17 号发出来的。</p>
+            <p>那天只是想给自己做一个能装东西的地方——项目、实验记录、AI 工具、开源作品。没想到，你们真的会停下来看。</p>
+            <p>所以这次，我把这颗找到的地球完整开源了，分享给你。不是截图，不是片段，是能跑起来的源码。你拿去改配色、改大小、改成你自己的星球，都行。</p>
+            <p class="letter__sign">谢谢你们把我的自嗨，看成了作品。<br><span>—— 清晨方白晓</span></p>
+          </div>
+
+          <!-- Terminal：这一屏唯一的实体容器，不再外套 glass container -->
+          <div class="terminal" data-anim="fade" data-terminal>
+            <div class="terminal__bar">
+              <span class="terminal__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="terminal__name">TERMINAL</span>
+              <button class="copy-btn" type="button" data-copy="git clone https://github.com/csuyincs-creator/baixiao-earth.git &amp;&amp; cd baixiao-earth &amp;&amp; npm install &amp;&amp; npm run dev">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+                <span class="copy-btn__text">复制</span>
+              </button>
+            </div>
+            <pre class="terminal__body"><code data-terminal-code><span class="terminal__line" data-line>$ git clone https://github.com/csuyincs-creator/baixiao-earth.git</span><span class="terminal__line" data-line>$ cd baixiao-earth &amp;&amp; npm install &amp;&amp; npm run dev</span><span class="terminal__line terminal__line--ok" data-line>✓ Earth initialized</span></code></pre>
+          </div>
+
+          <a class="gift-more draw-line" data-anim="fade" style="--i:1"
+             href="https://github.com/csuyincs-creator/baixiao-earth" target="_blank" rel="noopener">OPEN SOURCE ↓</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⑥ 全景 -->
+    <section class="chapter chapter--end" data-chapter="5" data-energy="0" data-transition="pullback">
+      <div class="wrap wrap--narrow">
+        <h2 class="end-title" data-anim="fade" style="--i:0">来，一起玩</h2>
+        <p class="end-sub" data-anim="fade" style="--i:1">星球是空的，装什么由你决定。</p>
+        <div class="end-actions">
+          <a class="action" data-anim="fade" style="--i:0" href="https://www.douyin.com/user/self" target="_blank" rel="noopener">抖音 @清晨方白晓<span class="action__arrow" aria-hidden="true">→</span></a>
+          <a class="action" data-anim="fade" style="--i:1" href="https://github.com/csuyincs-creator/baixiao-earth" target="_blank" rel="noopener">GitHub<span class="action__arrow" aria-hidden="true">↗</span></a>
+        </div>
+        <p class="end-foot" data-anim="fade" style="--i:2">Vibe Coding · 把想法一步步落地</p>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- 沉浸播放：常驻入口 + HUD -->
+  <button class="immersive-toggle" type="button" data-immersive aria-label="进入沉浸播放模式">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5-11-6.5Z"></path></svg>
+    <span>沉浸播放</span>
+  </button>
+
+  <!-- 沉浸播放：只留屏幕顶端一条 2px 进度线，不出任何胶囊/文字/按钮。
+       退出 = ESC / 滚一下滚轮 / 滑动 / 方向键·空格 -->
+  <div class="immersive-progress" hidden><i></i></div>
+
+  <!-- 章节进度轨 -->
+  <nav class="chapter-rail" aria-label="章节导航">
+    <div class="chapter-rail__track"><div class="chapter-rail__fill" id="rail-fill"></div></div>
+    <button type="button" data-rail="0" aria-label="第 1 章"><span>开场</span></button>
+    <button type="button" data-rail="1" aria-label="第 2 章"><span>数字</span></button>
+    <button type="button" data-rail="2" aria-label="第 3 章"><span>作品</span></button>
+    <button type="button" data-rail="3" aria-label="第 4 章"><span>关于</span></button>
+    <button type="button" data-rail="4" aria-label="第 5 章"><span>开源</span></button>
+    <button type="button" data-rail="5" aria-label="第 6 章"><span>关注</span></button>
+  </nav>
+
+  <!-- 设置面板（原站能力，保留） -->
+  <button class="earth-settings-toggle" type="button" aria-label="打开地球设置" aria-expanded="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z"></path>
+      <path d="m19.2 13.3 1.4 1.1-1.9 3.3-1.7-.7a7.5 7.5 0 0 1-1.8 1l-.2 1.8h-3.8l-.3-1.8a7.5 7.5 0 0 1-1.8-1l-1.7.7-1.9-3.3 1.4-1.1a7 7 0 0 1 0-2.1L5.5 10l1.9-3.3 1.7.7a7.5 7.5 0 0 1 1.8-1l.3-1.8H15l.2 1.8a7.5 7.5 0 0 1 1.8 1l1.7-.7 1.9 3.3-1.4 1.2a7 7 0 0 1 0 2.1Z"></path>
+    </svg>
+  </button>
+
+  <aside class="earth-settings-panel" aria-label="站点与地球设置">
+    <h2>Settings · 设置</h2>
+    <p class="settings-note">拖动主画面可旋转 3D 地球。下面的修改会直接作用于当前场景，并实时预览。</p>
+
+    <!-- 沉浸播放：每章自动停留多久。改完立刻生效，整轮总时长在下面实时累计 -->
+    <section class="settings-group">
+      <h3>沉浸播放 · 每章停留</h3>
+      <p class="settings-subnote">点「沉浸播放」后，每一章自动停留的秒数。想快就调小，想细看就调大。</p>
+      <div class="settings-row"><label for="dwell-0">开场</label><input id="dwell-0" data-setting="dwell0" type="range" min="1" max="24" step="0.1" value="4.6"><output data-output="dwell0" data-unit="s" data-digits="1">4.6s</output></div>
+      <div class="settings-row"><label for="dwell-1">数字</label><input id="dwell-1" data-setting="dwell1" type="range" min="1" max="24" step="0.1" value="5.4"><output data-output="dwell1" data-unit="s" data-digits="1">5.4s</output></div>
+      <div class="settings-row"><label for="dwell-2">作品</label><input id="dwell-2" data-setting="dwell2" type="range" min="1" max="24" step="0.1" value="7.8"><output data-output="dwell2" data-unit="s" data-digits="1">7.8s</output></div>
+      <div class="settings-row"><label for="dwell-3">关于</label><input id="dwell-3" data-setting="dwell3" type="range" min="1" max="24" step="0.1" value="6.8"><output data-output="dwell3" data-unit="s" data-digits="1">6.8s</output></div>
+      <div class="settings-row"><label for="dwell-4">开源</label><input id="dwell-4" data-setting="dwell4" type="range" min="1" max="24" step="0.1" value="8.6"><output data-output="dwell4" data-unit="s" data-digits="1">8.6s</output></div>
+      <div class="settings-row"><label for="dwell-5">关注</label><input id="dwell-5" data-setting="dwell5" type="range" min="1" max="24" step="0.1" value="6.4"><output data-output="dwell5" data-unit="s" data-digits="1">6.4s</output></div>
+      <div class="settings-presets">
+        <button type="button" data-dwell-preset="fast">紧凑</button><button type="button" data-dwell-preset="normal">标准</button><button type="button" data-dwell-preset="slow">舒缓</button>
+      </div>
+      <p class="settings-total">整轮约 <b data-dwell-total>39.6s</b></p>
+    </section>
+
+    <section class="settings-group">
+      <h3>Scene</h3>
+      <div class="settings-row"><label for="setting-scale">地球 / 组件大小</label><input id="setting-scale" data-setting="scale" type="range" min="0.6" max="1.35" step="0.01" value="1"><output data-output="scale">1.00×</output></div>
+      <div class="settings-row"><label for="setting-brightness">地球亮度</label><input id="setting-brightness" data-setting="brightness" type="range" min="0.35" max="2.4" step="0.01" value="1"><output data-output="brightness">1.00×</output></div>
+      <div class="settings-row"><label for="setting-rotate">自动旋转速度</label><input id="setting-rotate" data-setting="autoRotateMultiplier" type="range" min="0" max="8" step="0.1" value="5.5"><output data-output="autoRotateMultiplier">5.5×</output></div>
+      <div class="settings-row"><label for="setting-drag">拖拽灵敏度</label><input id="setting-drag" data-setting="dragSensitivity" type="range" min="0.3" max="2.5" step="0.05" value="1.2"><output data-output="dragSensitivity">1.20×</output></div>
+    </section>
+
+    <section class="settings-group">
+      <h3>Particles / Orbits</h3>
+      <div class="settings-row"><label for="setting-points">光点大小</label><input id="setting-points" data-setting="pointScale" type="range" min="0.45" max="2.4" step="0.05" value="1"><output data-output="pointScale">1.00×</output></div>
+      <div class="settings-row"><label for="setting-orbit">轨道亮度</label><input id="setting-orbit" data-setting="orbitIntensity" type="range" min="0" max="2.4" step="0.05" value="1"><output data-output="orbitIntensity">1.00×</output></div>
+      <div class="settings-checks">
+        <label><input type="checkbox" data-setting="showPoints" checked>显示光点</label>
+        <label><input type="checkbox" data-setting="showOrbits" checked>显示轨道</label>
+        <label><input type="checkbox" data-setting="showAtmosphere" checked>显示大气</label>
+        <label><input type="checkbox" data-setting="showClouds" checked>显示云层</label>
+      </div>
+    </section>
+
+    <section class="settings-group">
+      <h3>光点三色</h3>
+      <div class="settings-colors">
+        <label class="settings-color">A<input type="color" data-color="pointA" value="#19e9df"></label>
+        <label class="settings-color">B<input type="color" data-color="pointB" value="#ff35d1"></label>
+        <label class="settings-color">C<input type="color" data-color="pointC" value="#ffffff"></label>
+      </div>
+      <div class="settings-presets" data-preset-group="points">
+        <button type="button" data-preset="neon">Neon</button><button type="button" data-preset="ice">Ice</button><button type="button" data-preset="sunset">Sunset</button><button type="button" data-preset="aurora">Aurora</button>
+      </div>
+    </section>
+
+    <section class="settings-group">
+      <h3>轨道三色</h3>
+      <div class="settings-colors">
+        <label class="settings-color">A<input type="color" data-color="orbitA" value="#14efe0"></label>
+        <label class="settings-color">B<input type="color" data-color="orbitB" value="#ff23c8"></label>
+        <label class="settings-color">C<input type="color" data-color="orbitC" value="#9a6cff"></label>
+      </div>
+      <div class="settings-presets" data-preset-group="orbits">
+        <button type="button" data-preset="neon">Neon</button><button type="button" data-preset="ice">Ice</button><button type="button" data-preset="sunset">Sunset</button><button type="button" data-preset="aurora">Aurora</button>
+      </div>
+    </section>
+
+    <div class="settings-footer"><button class="settings-reset" type="button" data-setting-action="reset">恢复默认</button></div>
+  </aside>
+
+  <nav class="earth-state-controls" aria-label="Earth states controls">
+    <button type="button" data-earth-action="previous" aria-label="Previous state">
+      <svg viewBox="0 0 24 24"><path d="m14.7 5.3-1.4-1.4L6.2 11l7.1 7.1 1.4-1.4L9 11z"></path></svg>
+    </button>
+    <button type="button" data-earth-action="play" aria-label="Play states">
+      <svg data-icon="play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+      <svg data-icon="pause" viewBox="0 0 24 24" hidden><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg>
+    </button>
+    <button type="button" data-earth-action="next" aria-label="Next state">
+      <svg viewBox="0 0 24 24"><path d="m9.3 5.3 1.4-1.4 7.1 7.1-7.1 7.1-1.4-1.4L15 11z"></path></svg>
+    </button>
+    <div class="earth-state-dots" role="tablist" aria-label="Earth states">
+      <button type="button" data-earth-state="0" role="tab" aria-label="State 1"></button>
+      <button type="button" data-earth-state="1" role="tab" aria-label="State 2"></button>
+      <button type="button" data-earth-state="2" role="tab" aria-label="State 3"></button>
+      <button type="button" data-earth-state="3" role="tab" aria-label="State 4"></button>
+      <button type="button" data-earth-state="4" role="tab" aria-label="State 5"></button>
+      <button type="button" data-earth-state="5" role="tab" aria-label="State 6"></button>
+    </div>
+  </nav>
+
+  <!-- ============================================================
+       GLOBALS — 必须在 appv2.js 之前同步执行。
+       ============================================================ -->
+  <script>
+    window.__EARTH_STATES_HIDE_OBJECT_VIDEO__ = true;
+    window.__BAIXIAO_EARTH_SETTINGS__ = {
+      autoRotateMultiplier: 5.5,
+      scale: 1,
+      brightness: 1,
+      dragSensitivity: 1.2,
+      pointScale: 1,
+      orbitIntensity: 1,
+      showPoints: true,
+      showOrbits: true,
+      showAtmosphere: true,
+      showClouds: true,
+      pointA: '#19e9df', pointB: '#ff35d1', pointC: '#ffffff',
+      orbitA: '#14efe0', orbitB: '#ff23c8', orbitC: '#9a6cff',
+      /* 沉浸播放：每章停留秒数（开场 / 数字 / 作品 / 关于 / 开源 / 关注）。
+         在设置面板里改，随其它设置一起存进 localStorage。 */
+      dwell0: 4.6, dwell1: 5.4, dwell2: 7.8, dwell3: 6.8, dwell4: 8.6, dwell5: 6.4
+    };
+    window.__BAIXIAO_EARTH_DRAG_ROTATION__ = { x: 0, y: 0 };
+    // Chromium reports the expected pause/play race as an unhandled rejection.
+    window.addEventListener('unhandledrejection', (event) => {
+      const message = event.reason && event.reason.message;
+      if (message && message.includes('play() request was interrupted')) event.preventDefault();
+    });
+  </script>
+
+  <!-- 原站打包产物：原样加载，不经过 Vite 处理 -->
+  <script src="/appv2.js"></script>
+
+  <!-- 主页逻辑 -->
+  <script type="module" src="/src/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+/* =============================================================
+   immersive.css — 沉浸播放模式
+   -------------------------------------------------------------
+   进入后自动逐章往下播放，隐藏所有常驻 UI，只留底部一条极简 HUD。
+   退出方式：ESC / 滚轮 / 触摸滑动 / 点「退出」。
+   ============================================================= */
+
+/* 右上角常驻入口 */
+.immersive-toggle {
+  position: fixed;
+  top: 28px;
+  right: 180px;               /* 让开设置按钮 */
+  z-index: 22;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px 9px 13px;
+  background: rgba(10, 14, 24, .58);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ink-dim);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: .1em;
+  cursor: pointer;
+  transition: color .3s var(--ease), border-color .3s var(--ease), opacity .4s var(--ease), translate .4s var(--ease);
+}
+.immersive-toggle svg { width: 13px; height: 13px; fill: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .immersive-toggle:hover { color: var(--ink); border-color: rgba(255, 179, 71, .5); }
+}
+
+/* ---------- 重开黑幕 ---------- */
+/* 点击「沉浸播放」= 真刷新页面重开。黑幕负责把「点一下」和「加载完成」缝起来，
+   中间不出现白屏/内容闪动。刷新后由 head 里的内联脚本直接给出 is-immersive-boot，
+   首帧就是全黑（不播过渡），JS 就绪后再揭幕。 */
+.boot-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: #05070c;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .44s var(--ease), visibility 0s linear .44s;
+  pointer-events: none;
+}
+html.is-leaving .boot-veil,
+html.is-immersive-boot .boot-veil {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .44s var(--ease), visibility 0s;
+}
+
+/* 点击瞬间：常驻 UI 立刻退场，只留黑幕落下 */
+html.is-leaving .earth-state-controls,
+html.is-leaving .earth-settings-toggle,
+html.is-leaving .earth-settings-panel,
+html.is-leaving .chapter-rail,
+html.is-leaving .immersive-toggle,
+html.is-leaving .scroll-cue {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: none;
+}
+
+/* ---------- 进度：只有屏幕顶端一条 2px 线，没有任何文字/按钮 ---------- */
+.immersive-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 2px;
+  z-index: 30;
+  background: transparent;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .5s var(--ease);
+}
+.immersive-progress[hidden] { display: none; }
+html.is-immersive .immersive-progress { opacity: 1; }
+
+.immersive-progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 12px rgba(255, 179, 71, .45);
+}
+
+/* =============================================================
+   沉浸态：隐藏一切常驻 UI
+   ============================================================= */
+html.is-immersive .earth-state-controls,
+html.is-immersive .earth-settings-toggle,
+html.is-immersive .earth-settings-panel,
+html.is-immersive .chapter-rail,
+html.is-immersive .immersive-toggle,
+html.is-immersive .scroll-cue {
+  opacity: 0;
+  translate: 0 14px;
+  pointer-events: none;
+}
+/* 控制条与设置按钮本来就是 fixed，用 visibility 彻底移出交互，
+   同时保留过渡让它平滑淡出而不是瞬间消失 */
+html.is-immersive .earth-state-controls { visibility: hidden; }
+html.is-immersive .earth-settings-toggle { visibility: hidden; }
+html.is-immersive .chapter-rail { visibility: hidden; }
+/* 入口按钮不留渐隐尾巴，直接消失（刷新后它压根不该存在） */
+html.is-immersive .immersive-toggle { display: none; }
+
+.earth-state-controls,
+.earth-settings-toggle,
+.chapter-rail,
+.immersive-toggle {
+  transition: opacity .45s var(--ease), translate .45s var(--ease), visibility 0s linear .45s;
+}
+html.is-immersive .earth-state-controls,
+html.is-immersive .earth-settings-toggle,
+html.is-immersive .chapter-rail,
+html.is-immersive .immersive-toggle {
+  transition: opacity .45s var(--ease), translate .45s var(--ease), visibility 0s;
+}
+
+/* 沉浸态：鼠标指针整个藏起来（含 is-leaving 的黑幕过渡期），画面里不该有桌面痕迹。
+   地球本身仍可拖动，靠惯性反馈而不是指针位置。 */
+html.is-immersive,
+html.is-immersive *,
+html.is-leaving,
+html.is-leaving * {
+  cursor: none !important;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1000px) {
+  /* 右上角已被设置按钮（right:24 / 42px 圆钮）占住，挪到左上避让 */
+  .immersive-toggle { left: 22px; right: auto; top: 22px; }
+}
+
+/* ---------- 降级 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .immersive-toggle, .immersive-progress, .boot-veil { transition: none; }
+  html.is-leaving .boot-veil { opacity: 1; visibility: visible; }
+}

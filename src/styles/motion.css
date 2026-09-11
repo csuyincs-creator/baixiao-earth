@@ -1,0 +1,289 @@
+/* =============================================================
+   motion.css — 行为语法
+   规格：视觉语言规格 v2 · Editorial Data — 11 动效规范
+   -------------------------------------------------------------
+   全站只有四套动效，按「事件」分类，不按「效果」分类：
+
+     Reveal    标题 / 正文 / 列表   → y 16→0 + opacity（含 Draw：线条自左描绘）
+     Count     数字                 → 数值递增（JS 驱动，见 home.js）
+     Switch    Project Preview      → crossfade（见 home.css .hero-artifact__img）
+     Enter     页面首次进入         → Hero 逐字聚焦（唯一合法 blur）
+
+   ── Blur Rule（v2 收紧）──────────────────────────────────────
+   主页只保留 1 处：Hero split-char 的首次聚焦。
+   dissolve / pullback 的入场 blur 已按 v2 删除。
+
+   ── 转场纪律（v2 · Cut by Content）───────────────────────────
+   不要 blur、不要 scale、不要拖影 —— 环境没消失，只是信息换了。
+   只动 opacity / translate / clip-path，不触发重排。
+   ============================================================= */
+
+/* 必须注册：未注册的自定义属性在 getComputedStyle 里只返回未求值的
+   calc 字符串，JS 拿不到实际毫秒数，count-up 的错峰就会失效。 */
+@property --d { syntax: '<time>'; inherits: false; initial-value: 0ms; }
+
+/* ---------- 缓动曲线令牌 ---------- */
+:root {
+  --e-expo:  cubic-bezier(.16, 1,   .30, 1);   /* 快出慢收，落位干脆 */
+  --e-out:   cubic-bezier(.22, .61, .36, 1);   /* 标准减速 —— 规格指定的唯一曲线 */
+  --e-soft:  cubic-bezier(.40, .00, .20, 1);   /* 首尾都软，用于镜头感 */
+  --mv: 1;                                     /* 位移系数（移动端收窄） */
+}
+
+/* ---------- 统一延迟公式（stagger 60–90ms，规格 11） ---------- */
+[data-anim] {
+  --i: 0;
+  --stagger: 72ms;
+  --base: 0ms;
+  --extra: 0ms;
+  --d: calc(var(--i) * var(--stagger) * var(--mv) + var(--base) + var(--extra));
+}
+
+/* =============================================================
+   ENTER · 页面首次进入 —— L3 专属（主页唯一合法 blur）
+   ============================================================= */
+.split-char {
+  display: inline-block;
+  opacity: 0; translate: 0 calc(18px * var(--mv)); filter: blur(10px);
+}
+.split-char.is-in {
+  opacity: 1; translate: 0 0; filter: blur(0);
+  transition:
+    opacity   .72s var(--e-out) var(--cd, 0ms),
+    translate .72s var(--e-out) var(--cd, 0ms),
+    filter    .46s var(--e-out) var(--cd, 0ms);
+}
+
+/* =============================================================
+   REVEAL · 区块进入视口  —— 统一 y 16→0 + opacity（420–520ms）
+   ============================================================= */
+
+/* A. 通用文字行 Text（eyebrow / 标题 / 度量 / 段落） */
+[data-anim="text"] {
+  --stagger: 72ms;
+  opacity: 0; translate: 0 calc(16px * var(--mv));
+}
+[data-anim="text"].is-in {
+  opacity: 1; translate: 0 0;
+  transition:
+    opacity   .48s var(--e-out) var(--d),
+    translate .48s var(--e-out) var(--d);
+}
+
+/* B. 列队 Rail（作品区：主图 → Index 依次落位）
+   stagger 比 text 大，制造「一件件点开」的呼吸。 */
+[data-anim="rail"] {
+  --stagger: 86ms; --base: 120ms;
+  opacity: 0; translate: 0 calc(16px * var(--mv));
+}
+[data-anim="rail"].is-in {
+  opacity: 1; translate: 0 0;
+  transition:
+    opacity   .52s var(--e-out) var(--d),
+    translate .52s var(--e-out) var(--d);
+}
+
+/* C. 编排列表 Line（三条轨道：fade + 16px 位移；节点点亮在 home.css 接） */
+[data-anim="line"] {
+  --stagger: 88ms; --base: 90ms;
+  opacity: 0; translate: 0 calc(16px * var(--mv));
+}
+[data-anim="line"].is-in {
+  opacity: 1; translate: 0 0;
+  transition:
+    opacity   .50s var(--e-out) var(--d),
+    translate .50s var(--e-out) var(--d);
+}
+
+/* D. 累计刻度 · 线条描绘 Draw（数据页的区间条） */
+[data-anim="draw"] { --base: 320ms; opacity: 0; }
+[data-anim="draw"].is-in {
+  opacity: 1;
+  transition: opacity .42s var(--e-out) var(--d);
+}
+[data-anim="draw"] .scale__line { transform: scaleX(0); transform-origin: left; }
+[data-anim="draw"].is-in .scale__line {
+  transform: scaleX(1);
+  transition: transform .92s var(--e-expo) calc(var(--d) + 100ms);
+}
+
+/* E. 长文 · 遮罩揭示 Wipe（致谢信，L0）
+   clip-path 自上而下揭开，像信纸被展开。无位移。 */
+[data-anim="wipe"] { --base: 140ms; opacity: 0; clip-path: inset(0 0 100% 0); }
+[data-anim="wipe"].is-in {
+  opacity: 1; clip-path: inset(0 0 0 0);
+  transition:
+    opacity   .72s var(--e-expo) var(--d),
+    clip-path .72s var(--e-expo) var(--d);
+}
+
+/* F. 纯淡入 Fade（L0 唯一入场）—— 收尾必须完全安静 */
+[data-anim="fade"] { --stagger: 90ms; --base: 120ms; opacity: 0; }
+[data-anim="fade"].is-in {
+  opacity: 1;
+  transition: opacity .60s var(--e-out) var(--d);
+}
+
+/* =============================================================
+   COUNT · 数据出现
+   数字滚格由 home.js 的 countUp() 驱动，时长读 [data-count-dur]，
+   起点延迟读回 [data-anim] 的 --d —— JS 不重复维护一份参数。
+   ============================================================= */
+[data-count] { font-variant-numeric: tabular-nums; }
+
+/* =============================================================
+   INTERACT · hover / 聚焦 —— 「线条描绘」工具类
+   ============================================================= */
+.draw-line { position: relative; display: inline-block; }
+.draw-line::after {
+  content: "";
+  position: absolute; left: 0; bottom: -2px;
+  width: 100%; height: 1px;
+  background: currentColor;
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .38s var(--e-expo);
+}
+@media (hover: hover) and (pointer: fine) {
+  .draw-line:hover::after { transform: scaleX(1); }
+}
+
+/* =============================================================
+   章节转场 —— 6 套，靠方向 + 扫光区分，不靠 blur / scale
+   ============================================================= */
+.chapter > .wrap { position: relative; z-index: 1; }
+
+/* 转场扫光：每个章节一层，切换时按该页语义扫过一次 */
+.chapter::after {
+  content: "";
+  position: absolute; inset: 0;
+  z-index: 0; pointer-events: none; opacity: 0;
+}
+
+/* ① 首屏 · 直接渐显 */
+[data-transition="intro"] > .wrap { opacity: 1; }
+
+/* ② 云散 Dissolve —— 由朦胧到清晰（v2：删除 12px 入场 blur） */
+[data-transition="dissolve"] > .wrap { opacity: 0; translate: 0 calc(-18px * var(--mv)); }
+[data-transition="dissolve"].is-entered > .wrap {
+  opacity: 1; translate: 0 0;
+  transition: opacity .62s var(--e-soft), translate .62s var(--e-soft);
+}
+[data-transition="dissolve"].is-leaving > .wrap {
+  opacity: 0; translate: 0 calc(-16px * var(--mv));
+  transition: opacity .38s var(--e-out), translate .38s var(--e-out);
+}
+[data-transition="dissolve"]::after {
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, .11) 46%, transparent);
+}
+[data-transition="dissolve"].is-entered::after { animation: veil-down 1.1s var(--e-soft) 1; }
+
+/* ③ 列队 Rail —— 整页横向推进 */
+[data-transition="rail"] > .wrap { opacity: 0; translate: calc(38px * var(--mv)) 0; }
+[data-transition="rail"].is-entered > .wrap {
+  opacity: 1; translate: 0 0;
+  transition: opacity .60s var(--e-expo), translate .60s var(--e-expo);
+}
+[data-transition="rail"].is-leaving > .wrap {
+  opacity: 0; translate: calc(-22px * var(--mv)) 0;
+  transition: opacity .38s var(--e-out), translate .38s var(--e-out);
+}
+[data-transition="rail"]::after {
+  background: linear-gradient(90deg, transparent, rgba(25, 233, 223, .12) 50%, transparent);
+}
+[data-transition="rail"].is-entered::after { animation: veil-left 1.0s var(--e-out) 1; }
+
+/* ④ 抬升 Lift —— 纵向抬升（v2：删除 scale） */
+[data-transition="lift"] > .wrap { opacity: 0; translate: 0 calc(44px * var(--mv)); }
+[data-transition="lift"].is-entered > .wrap {
+  opacity: 1; translate: 0 0;
+  transition: opacity .66s var(--e-expo) 60ms, translate .66s var(--e-expo) 60ms;
+}
+[data-transition="lift"].is-leaving > .wrap {
+  opacity: 0; translate: 0 calc(-30px * var(--mv));
+  transition: opacity .40s var(--e-out), translate .40s var(--e-out);
+}
+[data-transition="lift"]::after {
+  background: linear-gradient(0deg, transparent, rgba(255, 179, 71, .10) 52%, transparent);
+}
+[data-transition="lift"].is-entered::after { animation: veil-up 1.0s var(--e-out) 1; }
+
+/* ⑤ 涌出 Bloom —— v2：scale 改为纵向轻推，保留径向扫光 */
+[data-transition="bloom"] > .wrap { opacity: 0; translate: 0 calc(26px * var(--mv)); }
+[data-transition="bloom"].is-entered > .wrap {
+  opacity: 1; translate: 0 0;
+  transition: opacity .64s var(--e-soft), translate .64s var(--e-soft);
+}
+[data-transition="bloom"].is-leaving > .wrap {
+  opacity: 0; translate: 0 calc(-18px * var(--mv));
+  transition: opacity .38s var(--e-out), translate .38s var(--e-out);
+}
+[data-transition="bloom"]::after {
+  background: radial-gradient(circle at 50% 54%, rgba(255, 255, 255, .13), transparent 62%);
+}
+[data-transition="bloom"].is-entered::after { animation: veil-bloom 1.1s var(--e-soft) 1; }
+
+/* ⑥ 拉远 Pull Back —— v2：删除 blur 与 scale，改为反向轻推 */
+[data-transition="pullback"] > .wrap { opacity: 0; translate: 0 calc(-20px * var(--mv)); }
+[data-transition="pullback"].is-entered > .wrap {
+  opacity: 1; translate: 0 0;
+  transition: opacity .64s var(--e-soft), translate .64s var(--e-soft);
+}
+[data-transition="pullback"].is-leaving > .wrap {
+  opacity: 0; translate: 0 calc(-14px * var(--mv));
+  transition: opacity .38s var(--e-out), translate .38s var(--e-out);
+}
+[data-transition="pullback"]::after {
+  background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(255, 255, 255, .10) 74%, transparent);
+}
+[data-transition="pullback"].is-entered::after { animation: veil-close 1.0s var(--e-soft) 1; }
+
+/* ---------- 扫光关键帧（v2：删除 scale 变化） ---------- */
+@keyframes veil-down {
+  0%   { opacity: 0;   translate: 0 -38%; }
+  38%  { opacity: .95; }
+  100% { opacity: 0;   translate: 0 38%; }
+}
+@keyframes veil-left {
+  0%   { opacity: 0;   translate: 38% 0; }
+  40%  { opacity: .95; }
+  100% { opacity: 0;   translate: -38% 0; }
+}
+@keyframes veil-up {
+  0%   { opacity: 0;   translate: 0 34%; }
+  40%  { opacity: .95; }
+  100% { opacity: 0;   translate: 0 -34%; }
+}
+@keyframes veil-bloom {
+  0%   { opacity: 0;  translate: 0 8%; }
+  42%  { opacity: .9; }
+  100% { opacity: 0;  translate: 0 -8%; }
+}
+@keyframes veil-close {
+  0%   { opacity: 0;  translate: 0 -10%; }
+  40%  { opacity: .9; }
+  100% { opacity: 0;  translate: 0 6%; }
+}
+
+/* =============================================================
+   降级
+   ============================================================= */
+@media (max-width: 760px) {
+  :root { --mv: .55; }
+  .split-char { filter: none !important; }
+}
+
+/* 无障碍：只保留 160ms 的透明度淡入，去掉一切位移 / 模糊 / 遮罩 / 扫光 */
+@media (prefers-reduced-motion: reduce) {
+  [data-anim], .split-char {
+    opacity: 1 !important; translate: 0 0 !important;
+    filter: none !important; clip-path: none !important;
+  }
+  [data-anim] .scale__line { transform: none !important; }
+  [data-anim].is-in, .split-char.is-in { transition: opacity .16s linear !important; }
+  .chapter > .wrap {
+    opacity: 1 !important; translate: 0 0 !important; filter: none !important;
+  }
+  .chapter::after { display: none !important; }
+  .scroll-cue__line { animation: none !important; }
+  .draw-line::after { transition: none !important; }
+}

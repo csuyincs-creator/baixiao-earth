@@ -1,0 +1,614 @@
+/* =============================================================
+   home.css — 内容层
+   规格：视觉语言规格 v2 · Editorial Data
+   -------------------------------------------------------------
+   三轴：Z0 Earth / Z1 Atmosphere（Reading Mask）/ Z2 Content
+   容器只有四种：Hero Artifact · Index · Metric · Terminal
+   约束：
+   1) 只动 transform / opacity / filter，不动 width/margin/left
+   2) hover 动效包在 @media (hover:hover) 里，防移动端粘滞
+   3) 支持 prefers-reduced-motion
+   ============================================================= */
+
+:root {
+  /* ---------- 文字三级（规格 13：正文 ≥ .62，metadata ≥ .64） ---------- */
+  --ink:       #F4F5F6;                    /* Title    100% */
+  --ink-dim:   #CFD3D8;                    /* Body     82%  */
+  --ink-faint: #9198A1;                    /* Metadata 64%  */
+  --ink-deco:  rgba(255, 255, 255, .14);   /* 纯装饰线，不承载文字 */
+
+  /* ---------- 强调色：只给 eyebrow + 唯一超级指标 ---------- */
+  --accent:    #FFB347;
+  --accent-2:  #19E9DF;
+
+  --panel:     rgba(4, 8, 14, .62);        /* Terminal —— 全站唯一实体底 */
+  --line:      rgba(255, 255, 255, .14);
+  --ease:      cubic-bezier(.22, .61, .36, 1);
+
+  /* ---------- 字号标度（规格 13） ---------- */
+  --fs-hero:         clamp(48px, 7vw, 84px);
+  --fs-h2:           clamp(30px, 3.4vw, 44px);
+  --fs-featured:     clamp(22px, 2.2vw, 32px);
+  --fs-metric-hero:  clamp(48px, 5.6vw, 74px);
+  --fs-metric:       clamp(24px, 2.4vw, 38px);
+  --fs-body:         16px;
+  --fs-meta:         13px;
+  --fs-eyebrow:      11px;
+
+  /* ---------- 间距标度（规格 3.2：只用 4 / 8 / 12 / 16 / 24 / 32） ---------- */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+}
+
+body { font-family: var(--f-sans); }
+
+/* ---------- 内容层容器 ---------- */
+.home-content {
+  position: relative;
+  z-index: 5;
+  pointer-events: none;      /* 空白处穿透 → 能拖动地球 */
+}
+.home-content a,
+.home-content button,
+.home-content .letter,
+.home-content .terminal { pointer-events: auto; }
+
+/* 精确整屏（border-box）：与源码 [data-snap] section 的 100vh 严格对齐 */
+.chapter {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 100vh;
+  padding: 112px 0;
+  position: relative;
+}
+
+.wrap { width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+
+/* ---------- 文字 ---------- */
+.eyebrow {
+  font-family: var(--f-mono);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: .28em;
+  color: var(--accent);
+  margin: 0 0 var(--sp-5);
+  text-transform: uppercase;
+}
+
+.chapter-title {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  letter-spacing: .01em;
+  margin: 0 0 var(--sp-6);
+  color: var(--ink);
+}
+
+/* ---------- Serif ·「思考」声音 ----------
+   Serif Accent Rule（v1.0 继承，三条必须同时满足）
+     1. 一个标题最多 1 个 Serif span  2. ≤ 标题总字数 30%  3. 非每章必用
+   不用在：卡片标题、正文、按钮、导航 */
+.serif {
+  font-family: var(--f-serif);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: .015em;
+}
+
+/* =============================================================
+   屏 01 · Hero（规格 02）
+   ============================================================= */
+.hero-wrap { text-align: left; }
+.hero-title {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  letter-spacing: .035em;
+  line-height: 1.06;
+  margin: 0 0 var(--sp-5);
+  color: var(--ink);
+}
+.hero-sub { font-size: clamp(17px, 1.7vw, 21px); color: var(--ink-dim); margin: 0 0 var(--sp-5); }
+.hero-meta {
+  display: flex; align-items: center; gap: var(--sp-4);
+  font-family: var(--f-mono);
+  font-size: var(--fs-meta); color: var(--ink-faint);
+}
+.hero-meta i { width: 1px; height: 11px; background: var(--line); }
+
+.scroll-cue { margin-top: 56px; font-size: var(--fs-meta); color: var(--ink-faint); letter-spacing: .08em; }
+.scroll-cue__line {
+  width: 1px; height: 52px; margin-top: var(--sp-3);
+  background: linear-gradient(180deg, var(--accent), transparent);
+  animation: cue 2.2s var(--ease) infinite;
+  transform-origin: top;
+}
+@keyframes cue {
+  0%   { transform: scaleY(0); opacity: 0; }
+  40%  { transform: scaleY(1); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 0; }
+}
+
+/* ---------- 统一焦点环（无障碍，全站只有这一处） ---------- */
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 3px;
+}
+
+/* =============================================================
+   屏 02 · Metric —— 数字不是 Card，数字就是 UI（规格 03）
+   数据区宽 560–620px，不铺满画面；只 1 个超级指标用强调色。
+   ============================================================= */
+.metrics {
+  width: min(600px, 100%);
+  display: flex;
+  flex-direction: column;
+}
+.metric__num {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.metric__label {
+  display: block;
+  margin-top: var(--sp-3);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.metric__note { display: block; margin-top: var(--sp-1); font-size: var(--fs-meta); color: var(--ink-faint); }
+
+/* 唯一超级指标 */
+.metric--hero .metric__num {
+  font-size: var(--fs-metric-hero);
+  font-weight: 600;
+  letter-spacing: -2px;
+  color: var(--accent);
+}
+/* 其余数字全部白色 —— 强调色才有意义 */
+.metric--sec .metric__num {
+  font-size: var(--fs-metric);
+  font-weight: 500;
+  letter-spacing: -.5px;
+  color: var(--ink);
+}
+
+/* 累计刻度：真实区间（0 → 496K / DAY 01 → DAY 42），不是伪造趋势 */
+.scale {
+  display: flex; align-items: center; gap: var(--sp-4);
+  margin: var(--sp-6) 0;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: .14em; color: var(--ink-faint);
+}
+.scale__line { position: relative; flex: 1; height: 1px; background: var(--ink-deco); }
+.scale__line i {
+  position: absolute; right: -1px; top: 50%; translate: 0 -50%;
+  width: 9px; height: 9px; border-radius: 999px; background: var(--accent);
+}
+.scale__end--hi { color: var(--ink-dim); }
+
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-6);
+}
+.metric--last { padding-top: var(--sp-5); border-top: 1px solid var(--ink-deco); }
+
+/* =============================================================
+   屏 03 · Works —— 一张主作品 + 一个 Project Index（规格 04）
+   ============================================================= */
+.works {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+/* Hero Artifact —— 全站唯二允许有实体背景的容器 */
+.hero-artifact {
+  position: relative;
+  display: block;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #060A11;
+  border: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .35s var(--ease);
+}
+.hero-artifact__media { position: relative; aspect-ratio: 16 / 10; }
+.hero-artifact__img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;                       /* Switch 动效 = crossfade */
+  transition: opacity .5s var(--ease);
+}
+.hero-artifact__img.is-on { opacity: 1; }
+
+.hero-artifact__meta {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: var(--sp-5) 24px 20px;
+  background: linear-gradient(180deg, transparent, rgba(4, 8, 14, .74) 30%, rgba(4, 8, 14, .95));
+}
+.hero-artifact__rank {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: 11px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--accent);
+}
+.hero-artifact__title {
+  font-size: var(--fs-featured);
+  font-weight: 600; line-height: 1.35;
+  margin: var(--sp-2) 0 var(--sp-2);
+  color: var(--ink);
+}
+.hero-artifact__sub { margin: 0 0 var(--sp-4); font-size: var(--fs-meta); color: var(--ink-faint); }
+.hero-artifact__stats {
+  display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4);
+  font-size: 12px; color: var(--ink-faint);
+}
+.hero-artifact__stats b { color: var(--ink-dim); font-weight: 600; font-variant-numeric: tabular-nums; }
+.hero-artifact__arrow {
+  position: absolute; top: var(--sp-4); right: var(--sp-4);
+  font-size: 15px; color: var(--ink-dim);
+}
+
+/* Project Index —— 无容器，靠编号 + 分隔线组织 */
+.index-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.index-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 74px;
+  padding: var(--sp-3) var(--sp-1);
+  border-top: 1px solid var(--ink-deco);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .3s var(--ease);
+}
+.index-list li:last-child .index-row { border-bottom: 1px solid var(--ink-deco); }
+.index-row__no {
+  font-family: var(--f-mono);
+  font-size: 12px; letter-spacing: .16em;
+  color: var(--ink-faint);
+  transition: color .3s var(--ease);
+}
+.index-row__title {
+  font-size: 16px; line-height: 1.4;
+  color: var(--ink-faint);            /* 默认 70% */
+  transition: color .3s var(--ease);
+}
+.index-row__desc {
+  grid-column: 2;
+  margin-top: var(--sp-1);
+  font-size: var(--fs-meta);
+  color: var(--ink-faint);
+  opacity: 0;                          /* 预留高度，避免 hover 时行高跳动 */
+  transition: opacity .3s var(--ease);
+}
+.index-row__arrow {
+  font-size: var(--fs-meta); color: var(--ink-dim);
+  opacity: 0; translate: -6px 0;
+  transition: opacity .3s var(--ease), translate .3s var(--ease);
+}
+
+/* Hover / Active → 信息变化，不是 CSS 动画 */
+.index-row.is-active { border-color: rgba(255, 255, 255, .3); }
+.index-row.is-active .index-row__no { color: var(--ink-dim); }
+.index-row.is-active .index-row__title { color: var(--ink); }
+.index-row.is-active .index-row__desc { opacity: 1; }
+.index-row.is-active .index-row__arrow { opacity: 1; translate: 0 0; }
+
+@media (hover: hover) and (pointer: fine) {
+  .hero-artifact:hover { border-color: rgba(255, 255, 255, .26); }
+}
+
+/* =============================================================
+   屏 04 · Observation Log —— 视觉重心：线性（规格 06）
+   无容器的排版结构 + 一条细垂直轴 + 节点依次点亮。
+   ============================================================= */
+.editorial-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-width: 760px;
+  padding-left: 36px;
+}
+.editorial-list::before {
+  content: "";
+  position: absolute; left: 5px; top: 6px; bottom: 6px; width: 1px;
+  background: var(--ink-deco);
+}
+.track-item { position: relative; padding: 22px 0; }
+
+/* 节点：Reveal 时按 --i 依次点亮，而不是三个同时出现 */
+.track-item::before {
+  content: "";
+  position: absolute; left: -36px; top: 30px;
+  width: 11px; height: 11px; border-radius: 999px;
+  background: rgba(255, 255, 255, .22);
+  transition: background .6s var(--ease);
+}
+.track-item[data-anim="line"].is-in::before {
+  background: var(--ink);
+  transition-delay: calc(var(--d) + 260ms);
+}
+
+.track-item__no {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: 12px; letter-spacing: .2em;
+  color: var(--ink-faint);
+  margin-bottom: var(--sp-3);
+}
+.track-item h3 {
+  font-size: 21px;
+  font-weight: 600; letter-spacing: .01em;
+  margin: 0 0 var(--sp-3); color: var(--ink);
+}
+.track-item p { font-size: 15px; line-height: 1.85; color: var(--ink-dim); margin: 0; max-width: 60ch; }
+
+/* =============================================================
+   屏 05 · Open Source —— Reading Column + Reading Mask（规格 07）
+   正文不做 Card，但左侧必须有独立阅读保护（光场，不是卡片）。
+   ============================================================= */
+.chapter--gift { padding: 84px 0; }
+.chapter--gift .wrap {
+  max-width: none; margin: 0;
+  padding-left: clamp(32px, 7vw, 132px);
+  padding-right: 40px;
+}
+/* Z1 Atmosphere —— Reading Mask */
+.chapter--gift::before {
+  content: "";
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg,
+    rgba(3, 6, 10, .94) 0px,
+    rgba(3, 6, 10, .90) 300px,
+    rgba(3, 6, 10, .66) 560px,
+    rgba(3, 6, 10, .20) 730px,
+    transparent 870px);
+}
+.reading-column { max-width: 430px; }
+.chapter--gift .chapter-title { margin-bottom: var(--sp-5); }
+
+/* 致谢信：行长控制在 24–30 中文字符（430px ÷ 16px ≈ 26） */
+.letter { --card-pad: 0; --card-border-w: 0; }
+.letter p {
+  font-family: var(--f-serif);
+  font-size: var(--fs-body); line-height: 1.95;
+  color: var(--ink-dim);
+  margin: 0 0 var(--sp-4);
+}
+.letter p:last-child { margin-bottom: 0; }
+.letter__sign { color: var(--ink) !important; }
+.letter__sign span {
+  display: inline-block;
+  margin-top: var(--sp-3);
+  font-size: var(--fs-meta);
+  font-style: italic;
+  letter-spacing: .04em;
+  color: var(--ink-faint);
+}
+.editorial {
+  position: relative;
+  box-sizing: border-box;
+  padding: var(--card-pad, 0);
+  border: var(--card-border-w, 0) solid var(--ink-deco);
+  border-radius: 0;
+}
+
+/* Terminal —— 这一屏唯一的实体容器，不再外套 glass container */
+.terminal {
+  margin-top: var(--sp-5);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, .12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.terminal__bar {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: 10px var(--sp-3);
+  border-bottom: 1px solid rgba(255, 255, 255, .09);
+}
+.terminal__dots { display: inline-flex; gap: 5px; }
+.terminal__dots i { width: 9px; height: 9px; border-radius: 999px; background: rgba(255, 255, 255, .18); }
+.terminal__name { font-family: var(--f-mono); font-size: 11px; letter-spacing: .2em; color: var(--ink-faint); }
+.terminal__bar .copy-btn { margin-left: auto; }
+
+.terminal__body {
+  margin: 0; padding: var(--sp-4);
+  font-family: var(--f-mono);
+  font-size: 12px; line-height: 1.95;
+  color: var(--ink-dim);
+  overflow-x: auto; white-space: pre;
+}
+/* <code> 命中 UA 的 font-family:monospace，会盖掉 <pre> 继承来的 JetBrains Mono */
+.terminal__body code { font-family: inherit; font-size: inherit; }
+.terminal__line { display: block; min-height: 1.2em; }
+.terminal__line--ok { color: var(--accent-2); }
+
+.copy-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-dim);
+  cursor: pointer; font-size: 11px; padding: 6px 12px;
+  transition: background .25s var(--ease), color .25s var(--ease);
+}
+.copy-btn:hover { background: rgba(255, 255, 255, .15); color: var(--ink); }
+.copy-btn.is-copied { color: var(--accent-2); border-color: rgba(25, 233, 223, .4); }
+
+.gift-more {
+  display: inline-block;
+  margin-top: var(--sp-5);
+  font-family: var(--f-mono);
+  font-size: 12px; letter-spacing: .2em;
+  color: var(--ink-faint); text-decoration: none;
+  transition: color .3s var(--ease);
+}
+.gift-more:hover { color: var(--ink); }
+
+/* =============================================================
+   屏 06 · CTA —— 文字型 Action，不做发亮的大 Card（规格 10）
+   ============================================================= */
+.chapter--end { text-align: center; }
+.chapter--end .wrap { display: flex; flex-direction: column; align-items: center; }
+.end-title { font-size: clamp(32px, 4.6vw, 52px); font-weight: 600; margin: 0 0 var(--sp-4); color: var(--ink); }
+.end-sub { font-size: var(--fs-body); color: var(--ink-dim); margin: 0 0 40px; }
+.end-actions { display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; }
+.action {
+  display: inline-flex; align-items: center;
+  padding: 6px 2px;
+  font-size: 15px; color: var(--ink-dim);
+  text-decoration: none;
+  transition: color .3s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .action:hover { color: var(--ink); }
+}
+.end-foot { margin: 56px 0 0; font-size: var(--fs-meta); letter-spacing: .16em; color: var(--ink-faint); }
+
+/* ---------- 章节进度轨 ---------- */
+.chapter-rail {
+  position: fixed; right: 34px; top: 50%; translate: 0 -50%;
+  z-index: 18; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+}
+.chapter-rail__track {
+  position: absolute; right: 5px; top: 6px; bottom: 6px; width: 1px;
+  background: rgba(255, 255, 255, .14);
+}
+.chapter-rail__fill {
+  position: absolute; top: 0; left: 0; width: 100%; height: 0%;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  transition: height .45s var(--ease);
+}
+.chapter-rail button {
+  position: relative;
+  background: none; border: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3);
+  height: 26px; padding: 0 0 0 var(--sp-2);
+  color: var(--ink-faint); font-size: 11px; letter-spacing: .1em;
+  font-family: inherit;
+}
+.chapter-rail button span { opacity: 0; translate: 6px 0; transition: opacity .3s var(--ease), translate .3s var(--ease); }
+.chapter-rail button::after {
+  content: ""; width: 6px; height: 6px; border-radius: 999px;
+  background: rgba(255, 255, 255, .3);
+  transition: background .3s var(--ease), scale .3s var(--ease);
+  margin-right: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .chapter-rail:hover button span { opacity: 1; translate: 0 0; }
+}
+.chapter-rail button.is-active { color: var(--ink); }
+.chapter-rail button.is-active span { opacity: 1; translate: 0 0; }
+.chapter-rail button.is-active::after { background: var(--accent); scale: 1.5; }
+
+/* =============================================================
+   响应式
+   -------------------------------------------------------------
+   ⚠️ 已知限制：极矮视口（如横屏手机 844×390，可用高仅 ~310px）
+   作品章必然溢出（实测 +652px）。这不是漏调断点 —— `.chapter` 必须锁死
+   100vh 才能与地球层 [data-snap] 的 100vh section 严格对齐；一旦解绑高度，
+   bundle 内部 snapTo() 仍会吸附到 i×100vh，落点会错位到章节中间。
+   压缩密度也救不了（390px 高装不下主图 + 5 行 Index）。
+   真要支持，只能改 bundle 的 snap 逻辑，代价远大于收益。竖屏移动端不受影响
+   （≤760px 已解绑高度 + 不触发 wheel snap）。
+   ============================================================= */
+@media (max-width: 1000px) {
+  /* 主图 + Index 的左右结构在中屏过窄 → 改为上下。
+     中屏高度常常 >=1000（如 768×1024 平板），而 chapter 仍锁死 100vh，
+     实测 768×1024：内容 856px vs 可用 800px → 溢出 56px。
+     所以这里三件事一起做：收内距（112→76）、压主图比例、收栅格间距。
+     ⚠️ 内距不影响 .chapter 高度与 offsetTop，不会破坏 [data-snap] 对齐。 */
+  .chapter { padding: 76px 0; }
+  .works { grid-template-columns: 1fr; gap: var(--sp-4); }
+  .hero-artifact__media { aspect-ratio: 2.1 / 1; }
+  .index-row { min-height: 58px; padding: var(--sp-2) var(--sp-1); }
+  .chapter-rail { display: none; }
+}
+
+@media (max-width: 760px) {
+  /* 移动端单列内容远超一屏，不能锁死 100vh。
+     移动端不触发源码 snap（snapTo 只挂在 wheel 上），高度解绑无副作用。 */
+  .chapter { height: auto; min-height: 100vh; padding: 88px 0; }
+  .wrap { padding: 0 22px; }
+
+  .hero-title { font-size: clamp(38px, 12vw, 60px); }
+  .hero-meta { flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+
+  .metric-row { gap: var(--sp-4); }
+  .metric--hero .metric__num { letter-spacing: -1px; }
+
+  .hero-artifact__meta { padding: var(--sp-4) var(--sp-4) var(--sp-4); }
+  .index-row__title { font-size: 15px; }
+
+  .editorial-list { padding-left: 28px; }
+  .track-item::before { left: -28px; }
+
+  .chapter--gift { padding: 72px 0; }
+  .chapter--gift .wrap { padding-left: 22px; padding-right: 22px; }
+  .chapter--gift::before {
+    background: linear-gradient(90deg,
+      rgba(3, 6, 10, .93) 0px,
+      rgba(3, 6, 10, .88) 240px,
+      rgba(3, 6, 10, .55) 420px,
+      transparent 620px);
+  }
+  .reading-column { max-width: none; }
+  .terminal__body { font-size: 11.5px; }
+}
+
+/* 矮屏（1366×768 / 1440×800 等笔记本）：靠压缩密度适配，不改高度 ——
+   高度一改就会和 [data-snap] 错位，源码 snapTo 又会把页面拉回去。 */
+@media (min-width: 761px) and (max-height: 880px) {
+  .chapter { padding: 76px 0; }
+  .chapter-title { font-size: clamp(26px, 2.8vw, 34px); margin-bottom: var(--sp-5); }
+
+  .hero-title { font-size: clamp(42px, 5.6vw, 68px); }
+  .hero-sub { margin-top: var(--sp-4); }
+  .scroll-cue { margin-top: 32px; }
+
+  .metric--hero .metric__num { font-size: clamp(42px, 4.6vw, 60px); }
+  .metric--sec .metric__num { font-size: clamp(22px, 2vw, 30px); }
+  .metric--last { padding-top: var(--sp-4); }
+  .scale { margin: var(--sp-5) 0; }
+  .metric-row { margin-bottom: var(--sp-5); }
+
+  .hero-artifact__media { aspect-ratio: 16 / 8.4; }
+  .hero-artifact__meta { padding: var(--sp-4) 20px; }
+  .index-row { min-height: 62px; padding: var(--sp-2) var(--sp-1); }
+
+  .track-item { padding: 16px 0; }
+  .track-item h3 { font-size: 18px; margin: 0 0 var(--sp-2); }
+  .track-item p { font-size: 14px; line-height: 1.75; }
+  .track-item::before { top: 22px; }
+
+  .chapter--gift { padding: 58px 0; }
+  .letter p { font-size: 15px; line-height: 1.85; margin-bottom: var(--sp-3); }
+  .terminal__body { padding: var(--sp-3); }
+  .gift-more { margin-top: var(--sp-4); }
+
+  .end-title { font-size: clamp(30px, 4vw, 46px); }
+  .end-sub { margin-bottom: var(--sp-6); }
+  .end-foot { margin-top: 36px; }
+}
+
+/* ---------- Lenis 平滑滚动所需 ---------- */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: hidden; }
+
+/* ---------- 无障碍 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .split-char { opacity: 1 !important; translate: 0 0 !important; filter: none !important; }
+  .scroll-cue__line { animation: none; }
+  * { scroll-behavior: auto !important; }
+}

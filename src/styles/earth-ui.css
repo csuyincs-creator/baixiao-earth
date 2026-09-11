@@ -1,0 +1,175 @@
+/* =============================================================
+   earth-ui.css — 原站地球相关 UI（从原 index.html 的 <style> 原样抽出）
+   唯一改动：.earth-state-shell 由「600vh 撑滚动」改为「固定定位」，
+   把文档高度完全交给内容层 .home-content，避免两层高度叠加成 1200vh。
+   ============================================================= */
+
+:root { --earth-control: rgba(255, 255, 255, .9); }
+
+html, body { margin: 0; min-height: 100%; background: #070b14; scrollbar-width: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+/* 必须写在 html 上：body 的 overflow 不会传播到 viewport。
+   转场初始态有 x 位移，不加这条窄屏会出现横向滚动条。 */
+html { overflow-x: hidden; }
+
+/* 关于 body 的 overflow-x（这是一个有代价的取舍，别乱动）：
+   appv2.css 自带 body{overflow-x:hidden}，实测移动端没有它会出现 24px 横向溢出
+   （html 的 overflow-x:hidden 裁不掉 fixed 定位元素）。所以这里保留它。
+   代价：body 的 overflow-y 会被计算成 auto，body 成为滚动容器，
+   于是 animation-timeline: view() 会以 body（高＝整页内容高）当视口，
+   cover 量程被撑成整页高 → 滚动动效全部走不完。
+   主页目前只用 class 切换的过渡，不用 view()，所以不受影响。
+   若以后要在主页加 view() 动效，必须先处理 body 的 overflow。 */
+
+/* 不能用 fixed：源码的 snapTo() 靠 [data-snap] section 的 rect.top 找「最近的整屏」，
+   fixed 会让 rect.top 恒定 → 每次滚轮停下都被 scrollTo 拉回同一个位置（表现为地球回退）。
+   absolute 让 rect.top 恢复随滚动变化；overflow:hidden 防止内部 6 屏撑大文档高度。 */
+.earth-state-shell {
+  position: absolute; inset: 0 auto auto 0;
+  width: 100%; height: 100vh;
+  z-index: 0; min-height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#canvas-wrapper { position: fixed !important; inset: 0; z-index: 0; pointer-events: none; }
+#canvas-wrapper canvas { position: fixed !important; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+[data-webgl="GlobeIntro"] { position: relative; z-index: 1; }
+[data-webgl="GlobeIntro"] > section,
+[data-webgl="Wayfinder"] > section { min-height: 100vh; height: 100vh; pointer-events: none; }
+[data-webgl="GlobeIntro"] > section > *,
+[data-webgl="Wayfinder"] > section > * { visibility: hidden !important; opacity: 0 !important; }
+
+/* The source page uses this rectangular MP4 as editorial copy for the objects state. */
+[data-webgl="GlobeIntro"] .objects-section .video-w,
+[data-webgl="GlobeIntro"] .objects-section .objects-video { display: none !important; }
+
+.earth-state-controls {
+  align-items: center;
+  background: rgba(5, 10, 20, .55);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  bottom: 28px;
+  display: flex;
+  gap: 12px;
+  left: 50%;
+  padding: 9px 12px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 20;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.earth-state-controls button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--earth-control);
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+  width: 30px;
+}
+.earth-state-controls button:hover { color: #fff; transform: scale(1.08); }
+.earth-state-controls svg { fill: currentColor; height: 18px; width: 18px; }
+.earth-state-dots { align-items: center; display: flex; gap: 7px; padding: 0 3px; }
+.earth-state-dots button { height: 8px; width: 8px; }
+.earth-state-dots button::before {
+  background: rgba(255, 255, 255, .42);
+  border-radius: 999px;
+  content: "";
+  display: block;
+  height: 6px;
+  transition: background .25s ease, transform .25s ease;
+  width: 6px;
+}
+.earth-state-dots button.is-active::before { background: #fff; transform: scale(1.45); }
+
+/* 拖拽层：内容层盖在它上面，但内容层默认 pointer-events:none，
+   所以空白处仍能「横向」拖动地球。
+   touch-action 用 pan-y（而非 none）：纵向手势交还浏览器去滚页，
+   纵向滚动 / 拖动不得改变地球朝向；横向手势仍由本层接管旋转。 */
+.earth-drag-layer { cursor: grab; inset: 0; position: fixed; touch-action: pan-y; z-index: 4; }
+.earth-drag-layer.is-dragging { cursor: grabbing; }
+
+.earth-settings-toggle {
+  align-items: center;
+  background: rgba(5, 10, 20, .66);
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, .92);
+  cursor: pointer;
+  display: flex;
+  height: 42px;
+  justify-content: center;
+  position: fixed;
+  right: 24px;
+  top: 24px;
+  transition: background .2s ease, transform .2s ease;
+  width: 42px;
+  z-index: 30;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.earth-settings-toggle:hover { background: rgba(25, 38, 60, .88); transform: rotate(24deg); }
+.earth-settings-toggle svg { fill: none; height: 20px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; width: 20px; }
+
+.earth-settings-panel {
+  background: rgba(7, 13, 26, .9);
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, .9);
+  display: none;
+  max-height: calc(100vh - 84px);
+  overflow: auto;
+  padding: 18px 18px 16px;
+  position: fixed;
+  right: 24px;
+  top: 76px;
+  width: min(340px, calc(100vw - 48px));
+  z-index: 29;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .42);
+}
+.earth-settings-panel.is-open { display: block; }
+.earth-settings-panel h2 { font-size: 14px; letter-spacing: .12em; margin: 0 0 4px; text-transform: uppercase; }
+.earth-settings-panel .settings-note { color: rgba(220, 230, 245, .62); font-size: 11px; line-height: 1.45; margin: 0 0 16px; }
+.settings-group { border-top: 1px solid rgba(255, 255, 255, .1); margin-top: 14px; padding-top: 14px; }
+.settings-group h3 { color: rgba(220, 230, 245, .72); font-size: 11px; letter-spacing: .12em; margin: 0 0 10px; text-transform: uppercase; }
+.settings-subnote { color: rgba(220, 230, 245, .52); font-size: 11px; line-height: 1.45; margin: -4px 0 10px; }
+.settings-total { color: rgba(220, 230, 245, .62); font-size: 11px; margin: 12px 0 0; }
+.settings-total b { color: #8feee9; font-variant-numeric: tabular-nums; }
+.settings-row { align-items: center; display: grid; gap: 10px; grid-template-columns: 1fr 112px 54px; margin: 9px 0; }
+.settings-row label { font-size: 12px; }
+/* 必须写绝对字号：本文件没有 font-size 的元素会继承 appv2.css 里被整体缩放的
+   rem 根字号（实测 0.75px），数值会小到看不见 —— 旧版 × 输出就有这个问题。 */
+.settings-row output { color: #8feee9; font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
+.settings-row input[type="range"] { accent-color: #6be4e6; min-width: 0; width: 100%; }
+.settings-colors { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); }
+.settings-color { align-items: center; color: rgba(220, 230, 245, .72); display: flex; flex-direction: column; font-size: 10px; gap: 5px; }
+.settings-color input { background: transparent; border: 0; cursor: pointer; height: 28px; padding: 0; width: 54px; }
+.settings-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.settings-presets button, .settings-reset {
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, .86);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 6px 10px;
+}
+.settings-presets button:hover, .settings-reset:hover { background: rgba(255, 255, 255, .16); }
+.settings-checks { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+.settings-checks label { align-items: center; color: rgba(220, 230, 245, .8); display: flex; font-size: 12px; gap: 7px; }
+.settings-checks input { accent-color: #6be4e6; }
+.settings-footer { display: flex; justify-content: flex-end; margin-top: 14px; }
+
+@media (max-width: 600px) {
+  .earth-state-controls { bottom: 18px; }
+  .earth-settings-toggle { right: 14px; top: 14px; }
+  .earth-settings-panel { right: 14px; top: 66px; width: min(340px, calc(100vw - 28px)); }
+}
